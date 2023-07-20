@@ -35,6 +35,7 @@ public class BooksController: ControllerBase
     [HttpGet("{lang}")]
     public async Task<IActionResult> GetBook(string lang)
     {
+        // just checking
         try
         {
             var books = await _bookRepos.GetBooksByLang(lang);
