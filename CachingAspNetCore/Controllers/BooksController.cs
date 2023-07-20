@@ -1,6 +1,5 @@
 using CachingAspNetCore.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace CachingAspNetCore.Controllers;
 
@@ -22,6 +21,23 @@ public class BooksController: ControllerBase
         try
         {
             var books = await _bookRepos.GetBooks();
+            _logger.LogInformation("Retrieved books");
+            return Ok(books);    
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.Message);
+            return StatusCode(StatusCodes.Status500InternalServerError,"Something went wrong");
+        }
+        
+    }
+
+    [HttpGet("{lang}")]
+    public async Task<IActionResult> GetBook(string lang)
+    {
+        try
+        {
+            var books = await _bookRepos.GetBooksByLang(lang);
             _logger.LogInformation("Retrieved books");
             return Ok(books);    
         }

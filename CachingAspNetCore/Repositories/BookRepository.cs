@@ -7,6 +7,8 @@ namespace CachingAspNetCore.Repositories;
 public interface IBookRepository
 {
     Task<IEnumerable<Book>> GetBooks();
+    Task<IEnumerable<Book>> GetBooksByLang(string lang);
+    
 }
 public class BookRepository: IBookRepository
 {
@@ -23,4 +25,10 @@ public class BookRepository: IBookRepository
         return books??Enumerable.Empty<Book>();
     }
 
+    public async Task<IEnumerable<Book>> GetBooksByLang(string lang)
+    {
+        var books = await GetBooks();
+        var filteredBooks= books.ToList().Where(a => a.Language.ToLower().Contains(lang.ToLower()));
+        return filteredBooks;
+    }
 }
