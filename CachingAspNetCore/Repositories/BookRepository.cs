@@ -1,34 +1,61 @@
-using System.Collections;
-using System.Text.Json;
+using CachingAspNetCore.Controllers;
 using CachingAspNetCore.Model;
+using Dapper;
+using Microsoft.Data.SqlClient;
 
 namespace CachingAspNetCore.Repositories;
 
 public interface IBookRepository
 {
-    Task<IEnumerable<Book>> GetBooks();
-    Task<IEnumerable<Book>> GetBooksByLang(string lang);
-    
+    Task<IEnumerable<Book>> GetBooks(string? lang, string? title);
+    Task<Book> AddBook(Book book);
+    Task<Book> GetBook(int id);
 }
-public class BookRepository: IBookRepository
+public class BookRepository : IBookRepository
 {
-    public async Task<IEnumerable<Book>> GetBooks()
+    private IConfiguration _config;
+    public BookRepository(IConfiguration config)
     {
-        string jsonFilePath = "books.json";
-        string jsonString = await File.ReadAllTextAsync(jsonFilePath);
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling=JsonCommentHandling.Skip
-        };
-        List<Book> books = JsonSerializer.Deserialize<List<Book>>(jsonString, options);
-        return books??Enumerable.Empty<Book>();
+        _config = config;
     }
 
-    public async Task<IEnumerable<Book>> GetBooksByLang(string lang)
+    public async Task<IEnumerable<Book>> GetBooks(string? lang, string? title)
     {
-        var books = await GetBooks();
-        var filteredBooks= books.ToList().Where(a => a.Language.ToLower().Contains(lang.ToLower()));
-        return filteredBooks;
+        using var connection = new SqlConnection(_config.GetConnectionString("default"));
+        string sql = "select * from Book where 1=1";
+        if (!string.IsNullOrWhiteSpace(lang))
+        {
+            sql += " and language like @Lang";
+        }
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            sql += " and title like @Title";
+        }
+        var books = await connection.QueryAsync<Book>(sql, new { lang = $"%{lang}%", Title = $"%{title}%" });
+        return books;
     }
+
+    public async Task<Book> AddBook(Book book)
+    {
+        using var connection = new SqlConnection(_config.GetConnectionString("default"));
+        string sql = @"insert into book(Author,Country,ImageLink,Language,Link,Pages,Title,Year,Price)
+        values (@Author,@Country,@ImageLink,@Language,@Link,@Pages,@Title,@Year,@Price); SELECT SCOPE_IDENTITY() AS [SCOPE_IDENTITY]";
+        int id = await connection.ExecuteScalarAsync<int>(sql, book, commandType: System.Data.CommandType.Text);
+        book.Id = id;
+        return book;
+    }
+
+
+    public async Task<Book> GetBook(int id)
+    {
+        using var connection = new SqlConnection(_config.GetConnectionString("default"));
+        string sql = "select * from Book where id=@id";
+        var book = await connection.QueryAsync<Book>(sql, new { id }, commandType: System.Data.CommandType.Text);
+        return book.SingleOrDefault();
+    }
+
+
+
+
+
 }
