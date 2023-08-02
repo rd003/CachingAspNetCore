@@ -1,5 +1,4 @@
 using CachingAspNetCore.Repositories;
-using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -9,13 +8,11 @@ builder.Services.AddControllers();
 // output caching
 builder.Services.AddOutputCache(options =>
 {
-  options.AddBasePolicy(builder =>
-  {
-    builder.Expire(TimeSpan.FromMinutes(2));
-  });
-  options.AddPolicy("ExpiresIn15s", builder => builder.Expire(TimeSpan.FromSeconds(15)));
-  options.AddPolicy("evict",
-  builder =>
+  options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromMinutes(2)));
+  options.AddPolicy("ExpireIn30s", builder => builder.Expire(TimeSpan.FromSeconds(30)));
+  options.AddPolicy("NoCache", builder => builder.NoCache());
+
+  options.AddPolicy("evict", builder =>
   {
     builder.Expire(TimeSpan.FromSeconds(90))
            .Tag("tag-book");
@@ -42,7 +39,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+// output cache
 app.UseOutputCache();
 app.MapControllers();
-// output cache
 app.Run();

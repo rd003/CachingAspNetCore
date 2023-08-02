@@ -18,15 +18,14 @@ public class BooksController : ControllerBase
     }
 
     [HttpGet]
-    [OutputCache(PolicyName = "evict", VaryByQueryKeys = new[] { "lang" })]
+    [OutputCache(PolicyName = "evict", VaryByQueryKeys = new string[] { "lang" })]
     public async Task<IActionResult> GetBooks(string? lang, string? title)
     {
         try
         {
             var books = await _bookRepos.GetBooks(lang, title);
-            _logger.LogInformation("Retrieved books");
-            // 👉 adding etag to response header
             // Response.Headers.ETag = $"\"{Guid.NewGuid():n}\"";
+            _logger.LogInformation("Retrieved books");
             return Ok(books);
         }
         catch (Exception ex)
@@ -37,8 +36,10 @@ public class BooksController : ControllerBase
 
     }
 
-    [OutputCache(PolicyName = "evict")]
     [HttpGet("{id}")]
+    //[OutputCache(NoStore = true)]
+    // [OutputCache(PolicyName = "NoCache")]
+    [OutputCache(PolicyName = "evict")]
     public async Task<IActionResult> GetById(int id)
     {
         try
@@ -63,9 +64,8 @@ public class BooksController : ControllerBase
         try
         {
             var createdBook = await _bookRepos.AddBook(book);
-            _logger.LogInformation("Books have saved");
-            // evicting the cache related to 'tag-book'
             await cache.EvictByTagAsync("tag-book", default);
+            _logger.LogInformation("Books have saved");
             return CreatedAtAction(nameof(AddBook), createdBook);
         }
         catch (Exception ex)
@@ -74,15 +74,6 @@ public class BooksController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
-
-    // for testing purpose only
-    // [HttpPost("/purge")]
-    // public async Task<IActionResult> PurgeBook(IOutputCacheStore cache)
-    // {
-    //     await cache.EvictByTagAsync("tag-book", default);
-    //     return Ok();
-    // }
-
 
 
 
